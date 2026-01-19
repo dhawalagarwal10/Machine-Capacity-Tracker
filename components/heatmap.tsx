@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 interface HeatmapCell {
   day: number
@@ -27,6 +27,11 @@ const statusColors = {
 export function Heatmap({ data, machineTypes, days }: HeatmapProps) {
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [mounted, setMounted] = useState(false); // New state for client-side mount
+
+  useEffect(() => {
+    setMounted(true); // Set to true after component mounts on client
+  }, []);
 
   const getCell = (machineType: string, day: number) => {
     return data.find((d) => d.machineType === machineType && d.day === day)
@@ -61,27 +66,38 @@ export function Heatmap({ data, machineTypes, days }: HeatmapProps) {
               <div className="flex gap-0.5">
                 {days.map((day, colIndex) => {
                   const cell = getCell(machineType, day)
-                  return (
-                    <motion.div
-                      key={`${machineType}-${day}`}
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        duration: 0.2,
-                        delay: rowIndex * 0.03 + colIndex * 0.01,
-                      }}
-                      className={`w-8 h-6 rounded-sm cursor-pointer transition-all duration-200 ${
-                        cell ? statusColors[cell.status] : "bg-muted/30"
-                      }`}
-                      onMouseEnter={(e) => {
-                        if (cell) {
-                          setHoveredCell(cell)
-                          setMousePosition({ x: e.clientX, y: e.clientY })
-                        }
-                      }}
-                      onMouseLeave={() => setHoveredCell(null)}
-                    />
-                  )
+                  // Render animated motion.div only after component mounts on client
+                  if (mounted) {
+                    return (
+                      <motion.div
+                        key={`${machineType}-${day}`}
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          duration: 0.2,
+                          delay: rowIndex * 0.03 + colIndex * 0.01,
+                        }}
+                        className={`w-8 h-6 rounded-sm cursor-pointer transition-all duration-200 ${
+                          cell ? statusColors[cell.status] : "bg-muted/30"
+                        }`}
+                        onMouseEnter={(e) => {
+                          if (cell) {
+                            setHoveredCell(cell)
+                            setMousePosition({ x: e.clientX, y: e.clientY })
+                          }
+                        }}
+                        onMouseLeave={() => setHoveredCell(null)}
+                      />
+                    )
+                  } else {
+                    // Render a simple div placeholder during SSR and initial client render before mount
+                    return (
+                      <div
+                        key={`${machineType}-${day}`}
+                        className="w-8 h-6 rounded-sm bg-muted/30"
+                      />
+                    )
+                  }
                 })}
               </div>
             </motion.div>
